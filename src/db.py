@@ -9,8 +9,6 @@ POSTGRES_USER = getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = getenv("POSTGRES_DB")
 
-print(POSTGRES_USER, POSTGRES_PASSWORD)
-
 db_client = psycopg2.connect(
     dbname=POSTGRES_DB,
     user=POSTGRES_USER,
@@ -21,12 +19,10 @@ db_client = psycopg2.connect(
 
 # Init DB
 cursor = db_client.cursor()
-
-cursor.executemany(
+cursor.execute(
     """
     CREATE TABLE IF NOT EXISTS "group" (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
+    name VARCHAR(100) PRIMARY KEY
     );
 
     CREATE TABLE IF NOT EXISTS "task" (
@@ -40,18 +36,17 @@ cursor.executemany(
     );
 
     CREATE TABLE IF NOT EXISTS "_groupToTask" (
-    group_id INTEGER REFERENCES group,
-    task_id INTEGER REFERENCES task
+    group_name VARCHAR(100) REFERENCES "group"(name),
+    task_id INTEGER REFERENCES "task"(id)
     );
 
     CREATE TABLE IF NOT EXISTS "student" (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    last_name VARCHAR(100),
-    group_id INTEGER REFERENCES group
+    id TEXT PRIMARY KEY,
+    full_name VARCHAR(100),
+    group_name VARCHAR(100) REFERENCES "group"(name)
     );
     """,
-    [],
 )
 
 db_client.commit()
+cursor.close()
