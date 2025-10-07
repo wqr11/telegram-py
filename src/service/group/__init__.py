@@ -24,3 +24,24 @@ class GroupService:
         data = cur.fetchall()
         cur.close()
         return data
+
+    @staticmethod
+    def create(name: str) -> tuple[str]:
+        cur = db_client.cursor()
+        cur.execute(
+            """
+            INSERT INTO "group" (name) VALUES (%s);
+            """,
+            (name,),
+        )
+        db_client.commit()
+
+        cur.execute(
+            """
+            SELECT * FROM "group" WHERE name = %s;
+            """,
+            (name,),
+        )
+        data = cur.fetchone()
+        cur.close()
+        return data if data else ("",)

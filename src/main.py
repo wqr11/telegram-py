@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from os import getenv
+import re
 
 from aiogram.filters.callback_data import CallbackData
 from dotenv import load_dotenv
@@ -54,6 +55,24 @@ async def handle_start(message: Message):
 
 # except:
 # _ = await message.reply("Произошла неизвестная ошибка")
+
+
+# @dp.message(Command("t"))
+# async def handle_create_task(message: Message):
+
+
+@dp.message(Command("create_group"))
+async def handle_create_group(message: Message):
+    match = re.match(r"\/create_group ([^ ]{3,})", str(message.text))
+
+    if not match:
+        _ = await message.reply("Невалидное название")
+        return
+    group_name = match.group(1)
+
+    group = GroupService.create(group_name)
+
+    _ = await message.reply(f"Группа создана: {group[0]}")
 
 
 @dp.message(Command("set_group"))
