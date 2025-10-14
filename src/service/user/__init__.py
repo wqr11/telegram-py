@@ -34,7 +34,10 @@ class UserService:
             """,
             (id, full_name),
         )
-        data = cur.statusmessage
+        data = (
+            id,
+            full_name,
+        )
         db_client.commit()
         cur.close()
         return data

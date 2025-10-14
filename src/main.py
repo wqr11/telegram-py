@@ -19,7 +19,10 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram import F
 
+from middleware import AuthMiddleware
+from service.classes import ClassService
 from service.group import GroupService
+from service.task import TaskService
 from service.user import UserService
 
 _ = load_dotenv()
@@ -30,6 +33,9 @@ dp = Dispatcher()
 router = Router()
 
 
+_ = dp.message.middleware(AuthMiddleware())
+
+
 class ICallbackData(CallbackData, prefix="my_action"):
     action: str
     key: int | str
@@ -37,33 +43,66 @@ class ICallbackData(CallbackData, prefix="my_action"):
 
 @dp.message(CommandStart())
 async def handle_start(message: Message):
-    # try:
-    if not (message.from_user and message.from_user.id):
-        _ = await message.reply("Пользователь неизвестен!")
-        return
-
-    user_id = message.from_user.id
-    user = UserService.find_user_by_id(str(user_id))
-    full_name = message.from_user.full_name
-
-    if user is None:
-        _ = UserService.create_user(user_id, full_name)
-        _ = await message.reply(f"Создан пользователь: {full_name}")
-    else:
-        _ = await message.reply(f"Привет, {user[1]}")
+    _ = await message.reply("HELLO")
 
 
 # except:
 # _ = await message.reply("Произошла неизвестная ошибка")
 
 
-# @dp.message(Command("t"))
-# async def handle_create_task(message: Message):
+@dp.message(Command("classes"))
+async def handle_create_task(message: Message):
+    user_id = message.from_user.id
+
+    if not user_id:
+        _ = await message.reply(
+            "На данный момент запись осуществляется только пользователями."
+        )
+        return
+
+    builder = InlineKeyboardBuilder()
+
+    classes = ClassService.get_classes_by_user_id(str(user_id))
+
+    if not classes:
+        _ = await message.reply("У Вас нет добавленных предметов.")
+        return
+
+    for id, name, _ in classes:
+        __ = builder.row(
+            InlineKeyboardButton(
+                text=name,
+                callback_data=ICallbackData(action="get_class_tasks", key=id).pack(),
+            )
+        )
+
+    _ = await message.reply(str(classes), reply_markup=builder.as_markup())
 
 
-@dp.message(Command("create_group"))
+@dp.message(Command("newclass", "new_class", "newcl"))
+async def handle_create_class(message: Message):
+    user_id = message.from_user.id
+
+    if not user_id:
+        _ = await message.reply("Предмет создать может только пользователь")
+        return
+
+    match = re.match(r"\/(?:newclass|new_class|newcl) ([^ ]{3,})", str(message.text))
+
+    if not match:
+        _ = await message.reply("Невалидное название")
+        return
+
+    class_name = match.group(1)
+
+    status = ClassService.create_class(class_name, str(user_id))
+
+    _ = await message.reply(f"Создан предмет: {class_name, status}")
+
+
+@dp.message(Command("newgrp", "new_group", "newgroup"))
 async def handle_create_group(message: Message):
-    match = re.match(r"\/create_group ([^ ]{3,})", str(message.text))
+    match = re.match(r"\/(?:newgrp|new_group|newgroup) ([^ ]{3,})", str(message.text))
 
     if not match:
         _ = await message.reply("Невалидное название")
@@ -75,7 +114,7 @@ async def handle_create_group(message: Message):
     _ = await message.reply(f"Группа создана: {group[0]}")
 
 
-@dp.message(Command("set_group"))
+@dp.message(Command("group", "set_group"))
 async def handle_set_group(message: Message):
     groups = GroupService.list()
 
@@ -86,7 +125,7 @@ async def handle_set_group(message: Message):
     builder = InlineKeyboardBuilder()
 
     for group in groups:
-        _ = builder.add(
+        _ = builder.row(
             InlineKeyboardButton(
                 text=str(group[0]),
                 callback_data=ICallbackData(action="join_group", key=group[0]).pack(),
@@ -97,7 +136,11 @@ async def handle_set_group(message: Message):
 
 
 @dp.callback_query()
-async def handle_join_group(call: CallbackQuery):
+async def handle_join_group(call: CallbackQuery, **data):
+    # @TODO: fix this (?)
+    if not call.message:
+        pass
+
     user_id = call.from_user.id
 
     if not (call.data):
@@ -125,13 +168,23 @@ async def handle_join_group(call: CallbackQuery):
                 )
                 _ = await call.answer()
             except:
-                _ = await message.reply(
+                _ = await call.message.reply(
                     f"Не удалось присоединиться к группе {group[0]}"
                 )
                 _ = await call.answer()
                 pass
 
             _ = await call.answer()
+            return
+        case "get_class_tasks":
+            class_id = int(key)
+
+            tasks = TaskService.get_tasks(class_id)
+
+            _ = await call.message.reply(f"{tasks}")
+
+            _ = await call.answer()
+            return
         case _:
             pass
 

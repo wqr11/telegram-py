@@ -25,6 +25,12 @@ cursor.execute(
     name VARCHAR(100) PRIMARY KEY
     );
 
+    CREATE TABLE IF NOT EXISTS "class" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    group_name VARCHAR(100) REFERENCES "group"(name)
+    );
+
     CREATE TABLE IF NOT EXISTS "task" (
     id SERIAL PRIMARY KEY,
     text TEXT,
@@ -35,8 +41,8 @@ cursor.execute(
     CONSTRAINT not_empty CHECK (text IS NOT NULL OR attachment IS NOT NULL)
     );
 
-    CREATE TABLE IF NOT EXISTS "_groupToTask" (
-    group_name VARCHAR(100) REFERENCES "group"(name),
+    CREATE TABLE IF NOT EXISTS "_classToTask" (
+    class_id INTEGER REFERENCES "class"(id),
     task_id INTEGER REFERENCES "task"(id)
     );
 
